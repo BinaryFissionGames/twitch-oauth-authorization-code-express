@@ -1,0 +1,28 @@
+{
+  "name": "twitch-oauth-authorization-code-express",
+  "version": "1.0.0",
+  "description": "Small library to get a Twitch OAuth code using the OAuth authorization code flow.",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build-test": "tsc --project test.tsconfig.json",
+    "test": "node -r dotenv/config dist/test.js dotenv_config_path=config.env",
+    "build": "tsc"
+  },
+  "keywords": [
+    "Twitch",
+    "OAuth",
+    "express"
+  ],
+  "author": "Brandon Johnson <BinaryFissionGames@gmail.com>",
+  "license": "MIT",
+  "dependencies": {
+    "@types/express": "^4.17.6",
+    "@types/express-session": "^1.17.0",
+    "express": "^4.17.1",
+    "express-session": "^1.17.1"
+  },
+  "devDependencies": {
+    "dotenv": "^8.2.0"
+  }
+}
