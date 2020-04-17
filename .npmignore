@@ -3,3 +3,5 @@ test.tsconfig.json
 src
 config.env
 config.example.env
+.gitignore
+,idea
