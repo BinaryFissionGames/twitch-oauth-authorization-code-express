@@ -17,13 +17,20 @@ type TwitchRefreshTokenResponse = {
     scope: string
 }
 
+type TokenInfo = {
+    access_token: string,
+    refresh_token: string
+}
+
+type OAuthTokenCallback = (req: any, res: any, info: TokenInfo) => void;
+
 // app is the express application, redirect_uri is the specified witch API redirect_uri
 // landing_path is the final path that the API redirects.
 // scopes is a list of strings, identifying the requested scopes.
 type TwitchOAuthPathOptions = {
     app: Application, // Express application to add path to
+    callback: OAuthTokenCallback, // Callback when a valid token is received
     redirect_uri: string, //URI twitch will redirect to with OAUTH code
-    landing_path: string, // Final path to redirect the user to after session is filled with OAuth token
     scopes?: string[], //list of scopes you are requesting
     client_id: string, //Registered client id
     client_secret: string, // Registered client secret
@@ -60,9 +67,11 @@ function setupTwitchOAuthPath(options: TwitchOAuthPathOptions) {
 
                     https_res.on('end', () => {
                         let data: TwitchAccessTokenResponse = JSON.parse(rawData);
-                        req.session.access_token = data.access_token;
-                        req.session.refresh_token = data.refresh_token;
-                        res.redirect(307, options.landing_path);
+                        let info: TokenInfo = {
+                            access_token: data.access_token,
+                            refresh_token: data.refresh_token
+                        };
+                        options.callback(req, res, info);
                     });
                 }
             );
@@ -93,14 +102,13 @@ function setupTwitchOAuthPath(options: TwitchOAuthPathOptions) {
     });
 }
 
-// Refresh token from sessions - it is up to the user of this library to properly synchronize
-// such that only one consumer for the related OAuth token calls this at a time.
-async function refreshToken(session: Express.Session, client_id: string, client_secret: string, scopes?: string[]) : Promise<void>{
+// Refresh token OAuth token - it is up to the user of this library to properly synchronize this
+async function refreshToken(refresh_token: string, client_id: string, client_secret: string, scopes?: string[]) : Promise<TokenInfo>{
     return new Promise((resolve, reject) => {
         let scope_string: string = scopes ? scopes.join(' ') : undefined;
 
         let https_request = https.request(`https://id.twitch.tv/oauth2/token` +
-            `?refresh_token=${session.refresh_token}` +
+            `?refresh_token=${refresh_token}` +
             `&client_id=${client_id}` +
             `&client_secret=${client_secret}` +
             `&grant_type=refresh_token` +
@@ -124,9 +132,11 @@ async function refreshToken(session: Express.Session, client_id: string, client_
                     }
 
                     let data: TwitchRefreshTokenResponse = JSON.parse(rawData);
-                    session.access_token = data.access_token;
-                    session.refresh_token = data.refresh_token;
-                    resolve();
+                    let info: TokenInfo = {
+                        access_token: data.access_token,
+                        refresh_token: data.refresh_token
+                    };
+                    resolve(info);
                 });
             }
         );
