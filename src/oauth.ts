@@ -14,12 +14,16 @@ type TwitchAccessTokenResponse = {
 type TwitchRefreshTokenResponse = {
     access_token: string,
     refresh_token: string,
-    scope: string
+    expires_in: number,
+    scope: string,
+    token_type: string
 }
 
 type TokenInfo = {
     access_token: string,
-    refresh_token: string
+    refresh_token: string,
+    expiry_date: Date,
+    scopes: string[]
 }
 
 type OAuthTokenCallback = (req: any, res: any, info: TokenInfo) => void;
@@ -41,6 +45,10 @@ type TwitchOAuthPathOptions = {
 function setupTwitchOAuthPath(options: TwitchOAuthPathOptions) {
     let redirect_uri_obj = new URL(options.redirect_uri);
     options.app.get(redirect_uri_obj.pathname, function (req, res) {
+        if(!req.session){
+            throw Error('No session middleware detected; Please attach session middleware!');
+        }
+
         if (req.query && req.query.code) {
             //Have code, make request with
             //Also assert state token is OK
@@ -69,7 +77,9 @@ function setupTwitchOAuthPath(options: TwitchOAuthPathOptions) {
                         let data: TwitchAccessTokenResponse = JSON.parse(rawData);
                         let info: TokenInfo = {
                             access_token: data.access_token,
-                            refresh_token: data.refresh_token
+                            refresh_token: data.refresh_token,
+                            scopes: data.scope,
+                            expiry_date: new Date(Date.now() + data.expires_in * 1000)
                         };
                         options.callback(req, res, info);
                     });
@@ -105,7 +115,7 @@ function setupTwitchOAuthPath(options: TwitchOAuthPathOptions) {
 // Refresh token OAuth token - it is up to the user of this library to properly synchronize this
 async function refreshToken(refresh_token: string, client_id: string, client_secret: string, scopes?: string[]) : Promise<TokenInfo>{
     return new Promise((resolve, reject) => {
-        let scope_string: string = scopes ? scopes.join(' ') : undefined;
+        let scope_string: string | undefined = scopes ? scopes.join(' ') : undefined;
 
         let https_request = https.request(`https://id.twitch.tv/oauth2/token` +
             `?refresh_token=${refresh_token}` +
@@ -125,16 +135,22 @@ async function refreshToken(refresh_token: string, client_id: string, client_sec
                 });
 
                 https_res.on('end', () => {
+                    if(!https_res.statusCode){
+                        return reject(new Error('No statusCode on response?!?!?!'));
+                    }
+
                     if(Math.floor(https_res.statusCode / 100) != 2){
                         //Not a 2xx status code; Meaning this is an error.
-                        reject(JSON.parse(rawData));
-                        return;
+                        return reject(JSON.parse(rawData));
                     }
 
                     let data: TwitchRefreshTokenResponse = JSON.parse(rawData);
+                    let scopes: string[] = data.scope.trim() === '' ? [] : data.scope.split(' ');
                     let info: TokenInfo = {
                         access_token: data.access_token,
-                        refresh_token: data.refresh_token
+                        refresh_token: data.refresh_token,
+                        scopes: scopes,
+                        expiry_date: new Date(Date.now() + data.expires_in * 1000)
                     };
                     resolve(info);
                 });

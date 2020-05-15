@@ -2,6 +2,8 @@
   "compilerOptions": {
     "module": "commonjs",
     "target": "es5",
+    "noImplicitAny": true,
+    "strictNullChecks": true,
     "declaration": true,
     "outDir": "./dist"
   },
