@@ -38,11 +38,17 @@ type TwitchOAuthPathOptions = {
     scopes?: string[], //list of scopes you are requesting
     client_id: string, //Registered client id
     client_secret: string, // Registered client secret
-    force_verify?: boolean // If true, user will always be prompted to confirm authorization.
+    force_verify?: boolean, // If true, user will always be prompted to confirm authorization.
+    token_url?: string, // url to send the code to to get the actual token, if non-standard (e.g. testing)
+    authorize_url?: string // url to send the client towards in order to get them to authorize your app. Useful for testing
 };
 
 // Assumes that the express application has the session middleware installed
 function setupTwitchOAuthPath(options: TwitchOAuthPathOptions) {
+
+    options.token_url = options.token_url || `https://id.twitch.tv/oauth2/token`;
+    options.authorize_url = options.authorize_url || `https://id.twitch.tv/oauth2/authorize`;
+
     let redirect_uri_obj = new URL(options.redirect_uri);
     options.app.get(redirect_uri_obj.pathname, function (req, res) {
         if(!req.session){
@@ -58,7 +64,7 @@ function setupTwitchOAuthPath(options: TwitchOAuthPathOptions) {
                 return;
             }
 
-            let https_request = https.request(`https://id.twitch.tv/oauth2/token` +
+            let https_request = https.request(options.token_url +
                 `?client_id=${options.client_id}` +
                 `&client_secret=${options.client_secret}` +
                 `&code=${req.query.code}` +
@@ -101,7 +107,7 @@ function setupTwitchOAuthPath(options: TwitchOAuthPathOptions) {
 
             let scope_string: string = options.scopes ? options.scopes.join(' ') : '';
 
-            res.redirect(307, `https://id.twitch.tv/oauth2/authorize` +
+            res.redirect(307, options.authorize_url +
                 `?client_id=${options.client_id}` +
                 `&redirect_uri=${encodeURIComponent(options.redirect_uri)}` +
                 `&response_type=code` +
@@ -113,11 +119,11 @@ function setupTwitchOAuthPath(options: TwitchOAuthPathOptions) {
 }
 
 // Refresh token OAuth token - it is up to the user of this library to properly synchronize this
-async function refreshToken(refresh_token: string, client_id: string, client_secret: string, scopes?: string[]) : Promise<TokenInfo>{
+async function refreshToken(refresh_token: string, client_id: string, client_secret: string, scopes?: string[], token_url?: string) : Promise<TokenInfo>{
     return new Promise((resolve, reject) => {
         let scope_string: string | undefined = scopes ? scopes.join(' ') : undefined;
 
-        let https_request = https.request(`https://id.twitch.tv/oauth2/token` +
+        let https_request = https.request((token_url ? token_url : `https://id.twitch.tv/oauth2/token`) +
             `?refresh_token=${refresh_token}` +
             `&client_id=${client_id}` +
             `&client_secret=${client_secret}` +
@@ -167,5 +173,6 @@ async function refreshToken(refresh_token: string, client_id: string, client_sec
 
 export {
     setupTwitchOAuthPath,
-    refreshToken
+    refreshToken,
+    TokenInfo
 }

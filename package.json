@@ -6,7 +6,7 @@
   "types": "dist/index.d.ts",
   "scripts": {
     "build-test": "tsc --project test.tsconfig.json",
-    "test": "node -r dotenv/config dist/test.js dotenv_config_path=config.env",
+    "test-app": "node -r dotenv/config dist/test.js dotenv_config_path=config.env",
     "build": "tsc"
   },
   "repository": "https://github.com/Denu8thell/twitch-oauth-authorization-code-express.git",

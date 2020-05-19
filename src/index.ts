@@ -1,1 +1,1 @@
-export {refreshToken, setupTwitchOAuthPath} from './oauth'
+export {refreshToken, setupTwitchOAuthPath, TokenInfo} from './oauth'
