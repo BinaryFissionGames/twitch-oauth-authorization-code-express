@@ -6,3 +6,4 @@ config.example.env
 .gitignore
 .idea
 README.md
+prisma

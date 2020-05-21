@@ -1,6 +1,8 @@
 import * as https from "https";
+import * as http from "http"
 import * as crypto from "crypto";
 import {Application} from "express";
+import * as express from "express";
 import {URL} from "url";
 
 type TwitchAccessTokenResponse = {
@@ -26,7 +28,7 @@ type TokenInfo = {
     scopes: string[]
 }
 
-type OAuthTokenCallback = (req: any, res: any, info: TokenInfo) => void;
+type OAuthTokenCallback = (req: express.Request, res: express.Response, info: TokenInfo) => void;
 
 // app is the express application, redirect_uri is the specified witch API redirect_uri
 // landing_path is the final path that the API redirects.
@@ -50,8 +52,9 @@ function setupTwitchOAuthPath(options: TwitchOAuthPathOptions) {
     options.authorize_url = options.authorize_url || `https://id.twitch.tv/oauth2/authorize`;
 
     let redirect_uri_obj = new URL(options.redirect_uri);
+
     options.app.get(redirect_uri_obj.pathname, function (req, res) {
-        if(!req.session){
+        if (!req.session) {
             throw Error('No session middleware detected; Please attach session middleware!');
         }
 
@@ -64,7 +67,14 @@ function setupTwitchOAuthPath(options: TwitchOAuthPathOptions) {
                 return;
             }
 
-            let https_request = https.request(options.token_url +
+            let requestModule;
+            if ((<string>options.token_url).startsWith('https://')) {
+                requestModule = https;
+            } else {
+                requestModule = http;
+            }
+
+            let http_request = requestModule.request(options.token_url +
                 `?client_id=${options.client_id}` +
                 `&client_secret=${options.client_secret}` +
                 `&code=${req.query.code}` +
@@ -92,13 +102,13 @@ function setupTwitchOAuthPath(options: TwitchOAuthPathOptions) {
                 }
             );
 
-            https_request.on("error", (e) => {
+            http_request.on("error", (e) => {
                 //TODO better error handling?
                 res.send('Got error');
                 res.end(e);
             });
 
-            https_request.end();
+            http_request.end();
         } else {
             // RFC 6749 suggests using a hash of the session cookie. Here, we use a random 16 bytes instead.
             // This may be more computationally expensive -
@@ -107,23 +117,33 @@ function setupTwitchOAuthPath(options: TwitchOAuthPathOptions) {
 
             let scope_string: string = options.scopes ? options.scopes.join(' ') : '';
 
-            res.redirect(307, options.authorize_url +
+            let redirectUrl = options.authorize_url +
                 `?client_id=${options.client_id}` +
                 `&redirect_uri=${encodeURIComponent(options.redirect_uri)}` +
                 `&response_type=code` +
                 `&scope=${encodeURIComponent(scope_string)}` +
                 `&state=${req.session.oauth_state}` +
-                (options.force_verify ? `&force_verify=${options.force_verify}` : ''));
+                (options.force_verify ? `&force_verify=${options.force_verify}` : '');
+
+            res.redirect(307, redirectUrl);
         }
     });
 }
 
 // Refresh token OAuth token - it is up to the user of this library to properly synchronize this
-async function refreshToken(refresh_token: string, client_id: string, client_secret: string, scopes?: string[], token_url?: string) : Promise<TokenInfo>{
+async function refreshToken(refresh_token: string, client_id: string, client_secret: string, scopes?: string[], token_url?: string): Promise<TokenInfo> {
     return new Promise((resolve, reject) => {
         let scope_string: string | undefined = scopes ? scopes.join(' ') : undefined;
+        token_url = token_url || `https://id.twitch.tv/oauth2/token`;
 
-        let https_request = https.request((token_url ? token_url : `https://id.twitch.tv/oauth2/token`) +
+        let requestModule;
+        if (token_url.startsWith('https://')) {
+            requestModule = https;
+        } else {
+            requestModule = http;
+        }
+
+        let https_request = requestModule.request( token_url +
             `?refresh_token=${refresh_token}` +
             `&client_id=${client_id}` +
             `&client_secret=${client_secret}` +
@@ -141,11 +161,11 @@ async function refreshToken(refresh_token: string, client_id: string, client_sec
                 });
 
                 https_res.on('end', () => {
-                    if(!https_res.statusCode){
+                    if (!https_res.statusCode) {
                         return reject(new Error('No statusCode on response?!?!?!'));
                     }
 
-                    if(Math.floor(https_res.statusCode / 100) != 2){
+                    if (Math.floor(https_res.statusCode / 100) != 2) {
                         //Not a 2xx status code; Meaning this is an error.
                         return reject(JSON.parse(rawData));
                     }
@@ -174,5 +194,6 @@ async function refreshToken(refresh_token: string, client_id: string, client_sec
 export {
     setupTwitchOAuthPath,
     refreshToken,
-    TokenInfo
+    TokenInfo,
+    OAuthTokenCallback
 }

@@ -6,6 +6,7 @@
   "types": "dist/index.d.ts",
   "scripts": {
     "build-test": "tsc --project test.tsconfig.json",
+    "test": "mocha dist/test/test.js",
     "test-app": "node -r dotenv/config dist/test.js dotenv_config_path=config.env",
     "build": "tsc"
   },
@@ -25,6 +26,12 @@
     "express-session": "^1.17.1"
   },
   "devDependencies": {
-    "dotenv": "^8.2.0"
+    "@types/got": "^9.6.11",
+    "@types/mocha": "^7.0.2",
+    "dotenv": "^8.2.0",
+    "got": "^11.1.4",
+    "mocha": "^7.1.2",
+    "tough-cookie": "^4.0.0",
+    "twitch-mock-oauth-server": "^0.4.0"
   }
 }
