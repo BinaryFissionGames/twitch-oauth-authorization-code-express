@@ -5,9 +5,10 @@
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "scripts": {
-    "build-test": "tsc --project test.tsconfig.json",
+    "build-test": "npx prisma generate && tsc --project test.tsconfig.json",
     "test": "mocha dist/test/test.js",
-    "test-app": "node -r dotenv/config dist/test.js dotenv_config_path=config.env",
+    "clean": "rm -r dist",
+    "clean_windows": "rd /s /q .\\dist",
     "build": "tsc"
   },
   "repository": "https://github.com/Denu8thell/twitch-oauth-authorization-code-express.git",
