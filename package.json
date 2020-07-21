@@ -1,6 +1,6 @@
 {
   "name": "twitch-oauth-authorization-code-express",
-  "version": "2.1.1",
+  "version": "2.1.2",
   "description": "Small library to get a Twitch OAuth code using the OAuth authorization code flow.",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
