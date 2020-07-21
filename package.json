@@ -5,6 +5,7 @@
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "scripts": {
+    "prepublishOnly": "npm run clean && npm run build",
     "build-test": "npx prisma generate && tsc --project test.tsconfig.json",
     "test": "mocha dist/test/test.js",
     "clean": "rm -r dist",
