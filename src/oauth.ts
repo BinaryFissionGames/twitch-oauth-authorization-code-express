@@ -28,7 +28,14 @@ type TokenInfo = {
     scopes: string[]
 }
 
+export class InvalidStateTokenError extends Error {
+    constructor() {
+        super("Invalid state token returned from Twitch.");
+    }
+}
+
 type OAuthTokenCallback = (req: express.Request, res: express.Response, info: TokenInfo) => void;
+type ErrorCallback = (e: Error) => string | Promise<string>;
 
 // app is the express application, redirect_uri is the specified witch API redirect_uri
 // landing_path is the final path that the API redirects.
@@ -36,6 +43,7 @@ type OAuthTokenCallback = (req: express.Request, res: express.Response, info: To
 type TwitchOAuthPathOptions = {
     app: Application, // Express application to add path to
     callback: OAuthTokenCallback, // Callback when a valid token is received
+    errorHandler?: ErrorCallback, // Callback when an error occurs. Returns a string that will be sent to the user.
     redirect_uri: string, //URI twitch will redirect to with OAUTH code
     scopes?: string[], //list of scopes you are requesting
     client_id: string, //Registered client id
@@ -44,6 +52,23 @@ type TwitchOAuthPathOptions = {
     token_url?: string, // url to send the code to to get the actual token, if non-standard (e.g. testing)
     authorize_url?: string // url to send the client towards in order to get them to authorize your app. Useful for testing
 };
+
+function handleError(res: {send: (o: any) => void, end: (o?: any) => void}, e: Error, errorHandler?: ErrorCallback){
+    if(errorHandler){
+        let errRetText = errorHandler(e);
+        if((errRetText as Promise<string>).then !== undefined){
+            (errRetText as Promise<string>).then((str) => {
+                res.send(str);
+                res.end();
+            });
+        } else {
+            res.send(errRetText);
+            res.end();
+        }
+    } else {
+        res.end(e);
+    }
+}
 
 // Assumes that the express application has the session middleware installed
 function setupTwitchOAuthPath(options: TwitchOAuthPathOptions) {
@@ -63,7 +88,8 @@ function setupTwitchOAuthPath(options: TwitchOAuthPathOptions) {
             //Also assert state token is OK
             if (!req.query.state || req.query.state !== req.session.oauth_state) {
                 //TODO better error handling?
-                res.end('Invalid state token returned from twitch.');
+                let e = new InvalidStateTokenError();
+                handleError(res, e, options.errorHandler);
                 return;
             }
 
@@ -103,9 +129,7 @@ function setupTwitchOAuthPath(options: TwitchOAuthPathOptions) {
             );
 
             http_request.on("error", (e) => {
-                //TODO better error handling?
-                res.send('Got error');
-                res.end(e);
+                handleError(res, e, options.errorHandler);
             });
 
             http_request.end();
