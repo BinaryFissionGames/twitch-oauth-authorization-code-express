@@ -31,7 +31,7 @@
     "@types/mocha": "^7.0.2",
     "dotenv": "^8.2.0",
     "got": "^11.1.4",
-    "mocha": "^7.1.2",
+    "mocha": "^10.2.0",
     "tough-cookie": "^4.0.0",
     "twitch-mock-oauth-server": "^0.4.0"
   }
